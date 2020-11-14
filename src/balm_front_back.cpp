@@ -46,50 +46,47 @@ void cut_voxel(unordered_map<VOXEL_LOC, OCTO_TREE*> &feat_map,
 			   pcl::PointCloud<PointType>::Ptr pl_feat,
 			   Eigen::Matrix3d R_p, Eigen::Vector3d t_p, int feattype, int fnum, int capacity)
 {
-  uint plsize = pl_feat->size();
-  for (uint i=0; i<plsize; i++)
-  {
-    // Transform point to world coordinate
-    PointType &p_c = pl_feat->points[i];
-    Eigen::Vector3d pvec_orig(p_c.x, p_c.y, p_c.z);
-    Eigen::Vector3d pvec_tran = R_p*pvec_orig + t_p;
+	uint plsize = pl_feat->size();
+	for (uint i=0; i<plsize; i++)
+	{
+		// Transform point to world coordinate
+		PointType &p_c = pl_feat->points[i];
+		Eigen::Vector3d pvec_orig(p_c.x, p_c.y, p_c.z);
+		Eigen::Vector3d pvec_tran = R_p*pvec_orig + t_p;
 
-    // Determine the key of hash table
-    float loc_xyz[3];
-    for (int j=0; j<3; j++)
-    {
-      loc_xyz[j] = pvec_tran[j] / voxel_size[feattype];
-      if (loc_xyz[j] < 0)
-      {
-        loc_xyz[j] -= 1.0;
-      }
-    }
-    VOXEL_LOC position((int64_t)loc_xyz[0], (int64_t)loc_xyz[1], (int64_t)loc_xyz[2]);
+		// Determine the key of hash table
+		float loc_xyz[3];
+		for (int j=0; j<3; j++)
+		{
+			loc_xyz[j] = pvec_tran[j] / voxel_size[feattype];
+			if (loc_xyz[j] < 0)
+				loc_xyz[j] -= 1.0;
+		}
+		VOXEL_LOC position((int64_t)loc_xyz[0], (int64_t)loc_xyz[1], (int64_t)loc_xyz[2]);
 
-    // Find corresponding voxel
-    auto iter = feat_map.find(position);
-    if (iter != feat_map.end())
-    {
-      iter->second->plvec_orig[fnum]->push_back(pvec_orig);
-      iter->second->plvec_tran[fnum]->push_back(pvec_tran);
-      iter->second->is2opt = true;
-    }
-    else // If not finding, build a new voxel
-    {
-      OCTO_TREE *ot = new OCTO_TREE(feattype, capacity);
-      ot->plvec_orig[fnum]->push_back(pvec_orig);
-      ot->plvec_tran[fnum]->push_back(pvec_tran);
+		// Find corresponding voxel
+		auto iter = feat_map.find(position);
+		if (iter != feat_map.end())
+		{
+			iter->second->plvec_orig[fnum]->push_back(pvec_orig);
+			iter->second->plvec_tran[fnum]->push_back(pvec_tran);
+			iter->second->is2opt = true;
+		}
+		else // If not finding, build a new voxel
+		{
+			OCTO_TREE *ot = new OCTO_TREE(feattype, capacity);
+			ot->plvec_orig[fnum]->push_back(pvec_orig);
+			ot->plvec_tran[fnum]->push_back(pvec_tran);
 
-      // Voxel center coordinate
-      ot->voxel_center[0] = (0.5+position.x) * voxel_size[feattype];
-      ot->voxel_center[1] = (0.5+position.y) * voxel_size[feattype];
-      ot->voxel_center[2] = (0.5+position.z) * voxel_size[feattype];
-      ot->quater_length = voxel_size[feattype] / 4.0; // A quater of side length
-      feat_map[position] = ot;
-    }
-  }
+			// Voxel center coordinate
+			ot->voxel_center[0] = (0.5+position.x) * voxel_size[feattype];
+			ot->voxel_center[1] = (0.5+position.y) * voxel_size[feattype];
+			ot->voxel_center[2] = (0.5+position.z) * voxel_size[feattype];
+			ot->quater_length = voxel_size[feattype] / 4.0; // A quater of side length
+			feat_map[position] = ot;
+		}
+	}
 }
-
 
 int main(int argc, char **argv) 
 {
@@ -344,20 +341,18 @@ int main(int argc, char **argv)
 						kdtree_surf->nearestKSearch(apy, ns, pointSearchInd, pointSearchSqDis);
 
 						if (pointSearchSqDis[ns-1] > 5)
-						{
-						continue;
-						}
+							continue;
 
 						Eigen::Matrix3d covMat(Eigen::Matrix3d::Zero());
 						Eigen::Vector3d center(0, 0, 0);
 						for (int j=0; j<ns; j++)
 						{
-						Eigen::Vector3d tvec;
-						tvec[0] = pl_surf_fil_map[pointSearchInd[j]].x;
-						tvec[1] = pl_surf_fil_map[pointSearchInd[j]].y;
-						tvec[2] = pl_surf_fil_map[pointSearchInd[j]].z;
-						covMat += tvec * tvec.transpose();
-						center += tvec;
+							Eigen::Vector3d tvec;
+							tvec[0] = pl_surf_fil_map[pointSearchInd[j]].x;
+							tvec[1] = pl_surf_fil_map[pointSearchInd[j]].y;
+							tvec[2] = pl_surf_fil_map[pointSearchInd[j]].z;
+							covMat += tvec * tvec.transpose();
+							center += tvec;
 						}
 
 						center /= ns;
@@ -366,9 +361,7 @@ int main(int argc, char **argv)
 
 						Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> saes(covMat);
 						if (saes.eigenvalues()[2] < 25*saes.eigenvalues()[0])
-						{
-						continue;
-						}
+							continue;
 
 						kervec = center;
 						orient = saes.eigenvectors().col(0);
@@ -376,9 +369,7 @@ int main(int argc, char **argv)
 						range = fabs(orient.dot(aft_tran - kervec));
 						
 						if (range > 1)
-						{
-						continue;
-						}
+							continue;
 						
 						sld.push_surf(p_orig, kervec, orient, (1-0.75*range));
 					}
@@ -645,10 +636,8 @@ int main(int argc, char **argv)
 				// multithreading
 				// map_refine_thread = new thread(&LM_SLWD_VOXEL::damping_iter, &opt_lsv);
 				// map_refine_thread->detach();
-				cout<<"GOOD"<<endl;
 				// non multithreading
 				opt_lsv.damping_iter();
-				cout<<"GOOD"<<endl;
 			}
 		}
 

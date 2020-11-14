@@ -2,9 +2,8 @@ cmake_minimum_required(VERSION 2.8.3)
 project(balm)
 
 set(CMAKE_BUILD_TYPE "Release")
-set(CMAKE_CXX_FLAGS "-std=c++11")
+set(CMAKE_CXX_FLAGS "-std=c++14")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
-
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
@@ -17,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 find_package(PCL REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 catkin_package(
   CATKIN_DEPENDS roscpp rospy std_msgs message_runtime
@@ -26,7 +26,7 @@ include_directories(
   include
   ${catkin_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS}
-	${CERES_INCLUDE_DIRS}
+  ${CERES_INCLUDE_DIRS}
 )
 
 catkin_package(
