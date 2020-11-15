@@ -245,8 +245,8 @@ int main(int argc, char **argv)
     {
       if(iter->second->is2opt)
       {
-        iter->second->root_centors.clear();
-        iter->second->recut(0, frame_head, iter->second->root_centors);
+        iter->second->root_centers.clear();
+        iter->second->recut(0, frame_head, iter->second->root_centers);
       }
     }
 
@@ -254,8 +254,8 @@ int main(int argc, char **argv)
     {
       if(iter->second->is2opt)
       {
-        iter->second->root_centors.clear();
-        iter->second->recut(0, frame_head, iter->second->root_centors);
+        iter->second->root_centers.clear();
+        iter->second->recut(0, frame_head, iter->second->root_centers);
       }
     }
 
@@ -329,8 +329,8 @@ int main(int argc, char **argv)
       {
         if(iter->second->is2opt)
         {
-          iter->second->root_centors.clear();
-          iter->second->marginalize(0, margi_size, q_poses, t_poses, window_base, iter->second->root_centors);
+          iter->second->root_centers.clear();
+          iter->second->marginalize(0, margi_size, q_poses, t_poses, window_base, iter->second->root_centers);
         }
       }
 
@@ -338,8 +338,8 @@ int main(int argc, char **argv)
       {
         if(iter->second->is2opt)
         {
-          iter->second->root_centors.clear();
-          iter->second->marginalize(0, margi_size, q_poses, t_poses, window_base, iter->second->root_centors);
+          iter->second->root_centers.clear();
+          iter->second->marginalize(0, margi_size, q_poses, t_poses, window_base, iter->second->root_centers);
         }
       }
 
