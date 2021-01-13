@@ -106,14 +106,14 @@ int main(int argc, char **argv)
 	ros::Publisher pub_odom = nh.advertise<nav_msgs::Odometry>("/odom_rviz_last", 10);
 	ros::Publisher pub_pose = nh.advertise<geometry_msgs::PoseArray>("/poseArrayTopic", 10);
 
-	int accumulate_window = 3;
-	double surf_filter_length = 0.4;
-	double corn_filter_length = 0.2;
-	int window_size = 20; // sliding window size
-	int margi_size = 5; // margilization size
+	int accumulate_window = 3; // 3
+	double surf_filter_length = 0.4; // 0.4
+	double corn_filter_length = 0.2; // 0.2
+	int window_size = 20; // sliding window size 20
+	int margi_size = 5; // margilization size 5
 	int filter_num = 1; // for map-refine LM optimizer
 	int thread_num = 4; // for map-refine LM optimizer
-	int scan2map_on = 10;
+	int scan2map_on = 10; // 10
 	int pub_skip = 1;
 
 	nh.param<int>("accumulate_window", accumulate_window, 3);

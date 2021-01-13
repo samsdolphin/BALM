@@ -52,7 +52,7 @@ struct M_POINT
 };
 
 // Similar with PCL voxelgrid filter
-void down_sampling_voxel(pcl::PointCloud<PointType> &pl_feat, double voxel_size)
+void down_sampling_voxel(pcl::PointCloud<PointType>& pl_feat, double voxel_size)
 {
 	if (voxel_size < 0.01)
 		return;
@@ -105,7 +105,7 @@ void down_sampling_voxel(pcl::PointCloud<PointType> &pl_feat, double voxel_size)
 	}
 }
 
-void down_sampling_voxel(Vec3d_vec &pl_feat, double voxel_size)
+void down_sampling_voxel(Vec3d_vec& pl_feat, double voxel_size)
 {
 	unordered_map<VOXEL_LOC, M_POINT> feat_map;
 	uint pt_size = pl_feat.size();
@@ -329,7 +329,8 @@ public:
 	}
 
 	// Calculate Hessian, Jacobian, residual
-	void acc_t_evaluate(vector<SO3> &so3_ps, vector<Eigen::Vector3d> &t_ps, int head, int end, Eigen::MatrixXd &Hess, Eigen::VectorXd &JacT, double &residual)
+	void acc_t_evaluate(vector<SO3> &so3_ps, vector<Eigen::Vector3d> &t_ps, int head, int end,
+						Eigen::MatrixXd &Hess, Eigen::VectorXd &JacT, double &residual)
 	{
 		Hess.setZero(); JacT.setZero(); residual = 0;
 		Eigen::MatrixXd _hess(Hess);
