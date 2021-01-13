@@ -44,22 +44,23 @@ void full_handler(const sensor_msgs::PointCloud2ConstPtr &msg)
 // capacity: The capacity of sliding window, a little bigger than windowsize
 void cut_voxel(unordered_map<VOXEL_LOC, OCTO_TREE*>& feature_map,
 			   pcl::PointCloud<PointType>::Ptr pc_feature,
-			   Eigen::Matrix3d R_p, Eigen::Vector3d t_p, int feattype, int fnum, int capacity)
+			   Eigen::Matrix3d R_p, Eigen::Vector3d t_p,
+			   int feattype, int fnum, int capacity)
 {
-	cout<<"[cut_voxel] fnum "<<fnum<<" capacity "<<capacity<<endl;
+	// cout<<"[cut_voxel] fnum "<<fnum<<" capacity "<<capacity<<endl;
 	uint pt_size = pc_feature->size();
 	for (uint i = 0; i < pt_size; i++)
 	{
 		// Transform point to world coordinate
-		PointType& p_c = pc_feature->points[i];
-		Eigen::Vector3d pvec_orig(p_c.x, p_c.y, p_c.z);
-		Eigen::Vector3d pvec_tran = R_p * pvec_orig + t_p;
+		PointType& pt = pc_feature->points[i];
+		Eigen::Vector3d pt_orig(pt.x, pt.y, pt.z);
+		Eigen::Vector3d pt_tran = R_p * pt_orig + t_p;
 
 		// Determine the key of hash table
 		float loc_xyz[3];
 		for (int j = 0; j < 3; j++)
 		{
-			loc_xyz[j] = pvec_tran[j] / voxel_size[feattype];
+			loc_xyz[j] = pt_tran[j] / voxel_size[feattype];
 			if (loc_xyz[j] < 0)
 				loc_xyz[j] -= 1.0; // int64_t will round the number
 		}
@@ -69,15 +70,15 @@ void cut_voxel(unordered_map<VOXEL_LOC, OCTO_TREE*>& feature_map,
 		auto iter = feature_map.find(position);
 		if (iter != feature_map.end())
 		{
-			iter->second->plvec_orig[fnum]->push_back(pvec_orig);
-			iter->second->plvec_tran[fnum]->push_back(pvec_tran);
+			iter->second->plvec_orig[fnum]->push_back(pt_orig);
+			iter->second->plvec_tran[fnum]->push_back(pt_tran);
 			iter->second->is2opt = true;
 		}
 		else // If not found, build a new voxel
 		{
 			OCTO_TREE *ot = new OCTO_TREE(feattype, capacity);
-			ot->plvec_orig[fnum]->push_back(pvec_orig);
-			ot->plvec_tran[fnum]->push_back(pvec_tran);
+			ot->plvec_orig[fnum]->push_back(pt_orig);
+			ot->plvec_tran[fnum]->push_back(pt_tran);
 
 			// Voxel center coordinate
 			ot->voxel_center[0] = (0.5 + position.x) * voxel_size[feattype];
@@ -661,5 +662,3 @@ int main(int argc, char **argv)
 		q_cur = q_cur * delta_q;    
 	}
 }
-
-

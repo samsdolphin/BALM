@@ -62,11 +62,11 @@ void down_sampling_voxel(pcl::PointCloud<PointType> &pl_feat, double voxel_size)
 
 	for (uint i = 0; i < pt_size; i++)
 	{
-		PointType &p_c = pl_feat[i];
+		PointType &pt = pl_feat[i];
 		float loc_xyz[3];
 		for (int j = 0; j < 3; j++)
 		{
-			loc_xyz[j] = p_c.data[j] / voxel_size;
+			loc_xyz[j] = pt.data[j] / voxel_size;
 			if (loc_xyz[j] < 0)
 				loc_xyz[j] -= 1.0;
 		}
@@ -75,17 +75,17 @@ void down_sampling_voxel(pcl::PointCloud<PointType> &pl_feat, double voxel_size)
 		auto iter = feat_map.find(position);
 		if (iter != feat_map.end())
 		{
-			iter->second.xyz[0] += p_c.x;
-			iter->second.xyz[1] += p_c.y;
-			iter->second.xyz[2] += p_c.z;
+			iter->second.xyz[0] += pt.x;
+			iter->second.xyz[1] += pt.y;
+			iter->second.xyz[2] += pt.z;
 			iter->second.count++;
 		}
 		else
 		{
 			M_POINT anp;
-			anp.xyz[0] = p_c.x;
-			anp.xyz[1] = p_c.y;
-			anp.xyz[2] = p_c.z;
+			anp.xyz[0] = pt.x;
+			anp.xyz[1] = pt.y;
+			anp.xyz[2] = pt.z;
 			anp.count = 1;
 			feat_map[position] = anp;
 		}
@@ -112,11 +112,11 @@ void down_sampling_voxel(Vec3d_vec &pl_feat, double voxel_size)
 
 	for (uint i = 0; i < pt_size; i++)
 	{
-		Eigen::Vector3d &p_c = pl_feat[i];
+		Eigen::Vector3d &pt = pl_feat[i];
 		double loc_xyz[3];
 		for (int j = 0; j < 3; j++)
 		{
-			loc_xyz[j] = p_c[j] / voxel_size;
+			loc_xyz[j] = pt[j] / voxel_size;
 			if (loc_xyz[j] < 0)
 				loc_xyz[j] -= 1.0;
 		}
@@ -125,17 +125,17 @@ void down_sampling_voxel(Vec3d_vec &pl_feat, double voxel_size)
 		auto iter = feat_map.find(position);
 		if (iter != feat_map.end())
 		{
-			iter->second.xyz[0] += p_c[0];
-			iter->second.xyz[1] += p_c[1];
-			iter->second.xyz[2] += p_c[2];
+			iter->second.xyz[0] += pt[0];
+			iter->second.xyz[1] += pt[1];
+			iter->second.xyz[2] += pt[2];
 			iter->second.count++;
 		}
 		else
 		{
 			M_POINT anp;
-			anp.xyz[0] = p_c[0];
-			anp.xyz[1] = p_c[1];
-			anp.xyz[2] = p_c[2];
+			anp.xyz[0] = pt[0];
+			anp.xyz[1] = pt[1];
+			anp.xyz[2] = pt[2];
 			anp.count = 1;
 			feat_map[position] = anp;
 		}
@@ -254,7 +254,8 @@ public:
 
 	// Used by "push_voxel"
 	void downsample(vector<Eigen::Vector3d>& plvec_orig, int cur_frame,
-					vector<Eigen::Vector3d>& plvec_voxel, vector<int>& slwd_num, int filternum2use)
+					vector<Eigen::Vector3d>& plvec_voxel, vector<int>& slwd_num,
+					int filternum2use)
 	{
 		uint pt_size = plvec_orig.size();
 		if (pt_size <= (uint)filternum2use)
@@ -285,7 +286,8 @@ public:
 	}
 
 	// Push voxel into optimizer
-	void push_voxel(vector<vector<Eigen::Vector3d>*> &plvec_orig, SIG_VEC_CLASS &sig_vec, int lam_type)
+	void push_voxel(vector<vector<Eigen::Vector3d>*> &plvec_orig,
+					SIG_VEC_CLASS &sig_vec, int lam_type)
 	{
 		int process_points_size = 0;
 		for (int i=0; i<slwd_size; i++)
@@ -326,352 +328,333 @@ public:
 		sig_vecs.push_back(sig_vec); // history points out of sliding window
 	}
 
-  // Calculate Hessian, Jacobian, residual
-  void acc_t_evaluate(vector<SO3> &so3_ps, vector<Eigen::Vector3d> &t_ps, int head, int end, Eigen::MatrixXd &Hess, Eigen::VectorXd &JacT, double &residual)
-  {
-    Hess.setZero(); JacT.setZero(); residual = 0;
-    Eigen::MatrixXd _hess(Hess);
-    Eigen::MatrixXd _jact(JacT);
+	// Calculate Hessian, Jacobian, residual
+	void acc_t_evaluate(vector<SO3> &so3_ps, vector<Eigen::Vector3d> &t_ps, int head, int end, Eigen::MatrixXd &Hess, Eigen::VectorXd &JacT, double &residual)
+	{
+		Hess.setZero(); JacT.setZero(); residual = 0;
+		Eigen::MatrixXd _hess(Hess);
+		Eigen::MatrixXd _jact(JacT);
 
-    // In program, lambda_0 < lambda_1 < lambda_2
-    // For plane, the residual is lambda_0
-    // For line, the residual is lambda_0+lambda_1
-    // We only calculate lambda_1 here
-    for (int a=head; a<end; a++)
-    {  
-      uint k = lam_types[a]; // 0 is surf, 1 is line
-      SIG_VEC_CLASS &sig_vec = sig_vecs[a];
-      vector<Eigen::Vector3d> &plvec_voxel = *plvec_voxels[a];
-      // Position in slidingwindow for each point in "plvec_voxel"
-      vector<int> &slwd_num = *slwd_nums[a]; 
-      uint backnum = plvec_voxel.size();
+		// In program, lambda_0 < lambda_1 < lambda_2
+		// For plane, the residual is lambda_0
+		// For line, the residual is lambda_0+lambda_1
+		// We only calculate lambda_1 here
+		for (int a=head; a<end; a++)
+		{  
+			uint k = lam_types[a]; // 0 is surf, 1 is line
+			SIG_VEC_CLASS &sig_vec = sig_vecs[a];
+			vector<Eigen::Vector3d> &plvec_voxel = *plvec_voxels[a];
+			// Position in slidingwindow for each point in "plvec_voxel"
+			vector<int> &slwd_num = *slwd_nums[a]; 
+			uint backnum = plvec_voxel.size();
 
-      Eigen::Vector3d vec_tran;
-      vector<Eigen::Vector3d> plvec_back(backnum);
-      // derivative point to T (R, t)
-      vector<Eigen::Matrix3d> point_xis(backnum);
-      Eigen::Vector3d centor(Eigen::Vector3d::Zero());
-      Eigen::Matrix3d covMat(Eigen::Matrix3d::Zero());
+			Eigen::Vector3d vec_tran;
+			vector<Eigen::Vector3d> plvec_back(backnum);
+			// derivative point to T (R, t)
+			vector<Eigen::Matrix3d> point_xis(backnum);
+			Eigen::Vector3d centor(Eigen::Vector3d::Zero());
+			Eigen::Matrix3d covMat(Eigen::Matrix3d::Zero());
 
-      for (uint i=0; i<backnum; i++)
-      {
-        vec_tran = so3_ps[slwd_num[i]].matrix() * plvec_voxel[i];
-        // left multiplication instead of right muliplication in paper
-        point_xis[i] = -SO3::hat(vec_tran); 
-        plvec_back[i] = vec_tran + t_ps[slwd_num[i]]; // after trans
+			for (uint i=0; i<backnum; i++)
+			{
+				vec_tran = so3_ps[slwd_num[i]].matrix() * plvec_voxel[i];
+				// left multiplication instead of right muliplication in paper
+				point_xis[i] = -SO3::hat(vec_tran); 
+				plvec_back[i] = vec_tran + t_ps[slwd_num[i]]; // after trans
 
-        centor += plvec_back[i];
-        covMat += plvec_back[i] * plvec_back[i].transpose();
-      }
-      
-      double N_points = backnum + sig_vec.sigma_size;
-      centor += sig_vec.sigma_vi;
-      covMat += sig_vec.sigma_vTv;
+				centor += plvec_back[i];
+				covMat += plvec_back[i] * plvec_back[i].transpose();
+			}
+			
+			double N_points = backnum + sig_vec.sigma_size;
+			centor += sig_vec.sigma_vi;
+			covMat += sig_vec.sigma_vTv;
 
-      covMat = covMat - centor*centor.transpose()/N_points;
-      covMat = covMat / N_points;
-      centor = centor / N_points;
+			covMat = covMat - centor*centor.transpose()/N_points;
+			covMat = covMat / N_points;
+			centor = centor / N_points;
 
-      Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> saes(covMat);
-      Eigen::Vector3d eigen_value = saes.eigenvalues();
+			Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> saes(covMat);
+			Eigen::Vector3d eigen_value = saes.eigenvalues();
 
-      Eigen::Matrix3d U = saes.eigenvectors();
-      Eigen::Vector3d u[3]; // eigenvectors
-      for (int j=0; j<3; j++)
-      {
-        u[j] = U.block<3, 1>(0, j);
-      }
+			Eigen::Matrix3d U = saes.eigenvectors();
+			Eigen::Vector3d u[3]; // eigenvectors
+			for (int j=0; j<3; j++)
+				u[j] = U.block<3, 1>(0, j);
 
-      // Jacobian matrix
-      Eigen::Matrix3d ukukT = u[k] * u[k].transpose();
-      Eigen::Vector3d vec_Jt;
-      for (uint i=0; i<backnum; i++)
-      {
-        plvec_back[i] = plvec_back[i] - centor;
-        vec_Jt = 2.0/N_points * ukukT * plvec_back[i];
-        _jact.block<3, 1>(6*slwd_num[i]+3, 0) += vec_Jt;
-        _jact.block<3, 1>(6*slwd_num[i], 0) -= point_xis[i] * vec_Jt;
-      }
+			// Jacobian matrix
+			Eigen::Matrix3d ukukT = u[k] * u[k].transpose();
+			Eigen::Vector3d vec_Jt;
+			for (uint i=0; i<backnum; i++)
+			{
+				plvec_back[i] = plvec_back[i] - centor;
+				vec_Jt = 2.0/N_points * ukukT * plvec_back[i];
+				_jact.block<3, 1>(6*slwd_num[i]+3, 0) += vec_Jt;
+				_jact.block<3, 1>(6*slwd_num[i], 0) -= point_xis[i] * vec_Jt;
+			}
 
-      // Hessian matrix
-      Eigen::Matrix3d Hessian33;
-      Eigen::Matrix3d C_k;
-      vector<Eigen::Matrix3d> C_k_np(3);
-      for (uint i=0; i<3; i++)
-      {
-        if (i == k)
-        {
-          C_k_np[i].setZero();
-          continue;
-        }
-        Hessian33 = u[i]*u[k].transpose();
-        // part of F matrix in paper
-        C_k_np[i] = -1.0/N_points/(eigen_value[i]-eigen_value[k])*(Hessian33 + Hessian33.transpose());
-      }
+			// Hessian matrix
+			Eigen::Matrix3d Hessian33;
+			Eigen::Matrix3d C_k;
+			vector<Eigen::Matrix3d> C_k_np(3);
+			for (uint i=0; i<3; i++)
+			{
+				if (i == k)
+				{
+					C_k_np[i].setZero();
+					continue;
+				}
+				Hessian33 = u[i]*u[k].transpose();
+				// part of F matrix in paper
+				C_k_np[i] = -1.0/N_points/(eigen_value[i]-eigen_value[k])*(Hessian33 + Hessian33.transpose());
+			}
 
-      Eigen::Matrix3d h33;
-      uint rownum, colnum;
-      for (uint j=0; j<backnum; j++)
-      {
-        for (int f=0; f<3; f++)
-        {
-          C_k.block<1, 3>(f, 0) = plvec_back[j].transpose() * C_k_np[f];
-        }
-        C_k = U * C_k;
-        colnum = 6*slwd_num[j];
-        // block matrix operation, half Hessian matrix
-        for (uint i=j; i<backnum; i++)
-        {
-          Hessian33 = u[k]*(plvec_back[i]).transpose()*C_k + u[k].dot(plvec_back[i])*C_k;
+			Eigen::Matrix3d h33;
+			uint rownum, colnum;
+			for (uint j=0; j<backnum; j++)
+			{
+				for (int f=0; f<3; f++)
+					C_k.block<1, 3>(f, 0) = plvec_back[j].transpose() * C_k_np[f];
 
-          rownum = 6*slwd_num[i];
-          if (i == j)
-          {
-            Hessian33 += (N_points-1)/N_points * ukukT;
-          }
-          else
-          {
-            Hessian33 -= 1.0/N_points * ukukT;
-          }
-          Hessian33 = 2.0/N_points * Hessian33; // Hessian matrix of lambda and point
+				C_k = U * C_k;
+				colnum = 6*slwd_num[j];
+				// block matrix operation, half Hessian matrix
+				for (uint i=j; i<backnum; i++)
+				{
+					Hessian33 = u[k]*(plvec_back[i]).transpose()*C_k + u[k].dot(plvec_back[i])*C_k;
 
-          // Hessian matrix of lambda and pose
-          if (rownum==colnum && i!=j)
-          {
-            _hess.block<3, 3>(rownum+3, colnum+3) += Hessian33 + Hessian33.transpose();
+					rownum = 6*slwd_num[i];
+					if (i == j)
+						Hessian33 += (N_points-1)/N_points * ukukT;
+					else
+						Hessian33 -= 1.0/N_points * ukukT;
 
-            h33 = -point_xis[i]*Hessian33;
-            _hess.block<3, 3>(rownum, colnum+3) += h33;
-            _hess.block<3, 3>(rownum+3, colnum) += h33.transpose();
-            h33 = Hessian33*point_xis[j];
-            _hess.block<3, 3>(rownum+3, colnum) += h33;
-            _hess.block<3, 3>(rownum, colnum+3) += h33.transpose();
-            h33 = -point_xis[i] * h33;
-            _hess.block<3, 3>(rownum, colnum) += h33 + h33.transpose();
-          }
-          else
-          {
-            _hess.block<3, 3>(rownum+3, colnum+3) += Hessian33;
-            h33 = Hessian33*point_xis[j];
-            _hess.block<3, 3>(rownum+3, colnum) += h33;
-            _hess.block<3, 3>(rownum, colnum+3) -= point_xis[i]*Hessian33;
-            _hess.block<3, 3>(rownum, colnum) -= point_xis[i]*h33;
-          } 
-        }
-      }
+					Hessian33 = 2.0/N_points * Hessian33; // Hessian matrix of lambda and point
 
-      if (k == 1)
-      {
-        // add weight for line feature
-        residual += corn_less*eigen_value[k];
-        Hess += corn_less*_hess; JacT += corn_less*_jact;
-      }
-      else
-      {
-        residual += eigen_value[k];
-        Hess += _hess; JacT += _jact;
-      }
-      _hess.setZero(); _jact.setZero();
-    }
+					// Hessian matrix of lambda and pose
+					if (rownum==colnum && i!=j)
+					{
+						_hess.block<3, 3>(rownum+3, colnum+3) += Hessian33 + Hessian33.transpose();
 
-    // Hessian is symmetric, copy to save time
-    for (int j=0; j<jac_leng; j+=6)
-    {
-      for (int i=j+6; i<jac_leng; i+=6)
-      {
-        Hess.block<6, 6>(j, i) = Hess.block<6, 6>(i, j).transpose();
-      }
-    }
-  }
+						h33 = -point_xis[i]*Hessian33;
+						_hess.block<3, 3>(rownum, colnum+3) += h33;
+						_hess.block<3, 3>(rownum+3, colnum) += h33.transpose();
+						h33 = Hessian33*point_xis[j];
+						_hess.block<3, 3>(rownum+3, colnum) += h33;
+						_hess.block<3, 3>(rownum, colnum+3) += h33.transpose();
+						h33 = -point_xis[i] * h33;
+						_hess.block<3, 3>(rownum, colnum) += h33 + h33.transpose();
+					}
+					else
+					{
+						_hess.block<3, 3>(rownum+3, colnum+3) += Hessian33;
+						h33 = Hessian33*point_xis[j];
+						_hess.block<3, 3>(rownum+3, colnum) += h33;
+						_hess.block<3, 3>(rownum, colnum+3) -= point_xis[i]*Hessian33;
+						_hess.block<3, 3>(rownum, colnum) -= point_xis[i]*h33;
+					} 
+				}
+			}
 
-  // Multithread for "acc_t_evaluate"
-  void divide_thread(vector<SO3> &so3_ps, vector<Eigen::Vector3d> &t_ps,Eigen::MatrixXd &Hess, Eigen::VectorXd &JacT, double &residual)
-  {
-    Hess.setZero(); JacT.setZero(); residual = 0;
+			if (k == 1)
+			{
+				// add weight for line feature
+				residual += corn_less*eigen_value[k];
+				Hess += corn_less*_hess; JacT += corn_less*_jact;
+			}
+			else
+			{
+				residual += eigen_value[k];
+				Hess += _hess; JacT += _jact;
+			}
+			_hess.setZero(); _jact.setZero();
+		}
 
-    vector<Eigen::MatrixXd> hessians(thd_num, Hess);
-    vector<Eigen::VectorXd> jacobians(thd_num, JacT);
-    vector<double> resis(thd_num, 0);
+		// Hessian is symmetric, copy to save time
+		for (int j=0; j<jac_leng; j+=6)
+		{
+			for (int i=j+6; i<jac_leng; i+=6)
+				Hess.block<6, 6>(j, i) = Hess.block<6, 6>(i, j).transpose();
+		}
+	}
 
-    uint gps_size = plvec_voxels.size();
-    if (gps_size < (uint)thd_num)
-    {
-      acc_t_evaluate(so3_ps, t_ps, 0, gps_size, Hess, JacT, residual);
-      Hess = hessians[0];
-      JacT = jacobians[0];
-      residual = resis[0];
-      return;
-    }
-    
-    vector<thread*> mthreads(thd_num);
+	// Multithread for "acc_t_evaluate"
+	void divide_thread(vector<SO3> &so3_ps, vector<Eigen::Vector3d> &t_ps,Eigen::MatrixXd &Hess, Eigen::VectorXd &JacT, double &residual)
+	{
+		Hess.setZero(); JacT.setZero(); residual = 0;
 
-    double part = 1.0*(gps_size)/thd_num;
-    for (int i=0; i<thd_num; i++)
-    {
-      int np = part*i;
-      int nn = part*(i+1);
-      
-      mthreads[i] = new thread(&LM_SLWD_VOXEL::acc_t_evaluate, this, ref(so3_ps), ref(t_ps), np, nn, ref(hessians[i]), ref(jacobians[i]), ref(resis[i]));
-    }
-    
-    for (int i=0; i<thd_num; i++)
-    {
-      mthreads[i]->join();
-      Hess += hessians[i];
-      JacT += jacobians[i];
-      residual += resis[i];
-      delete mthreads[i];
-    }
+		vector<Eigen::MatrixXd> hessians(thd_num, Hess);
+		vector<Eigen::VectorXd> jacobians(thd_num, JacT);
+		vector<double> resis(thd_num, 0);
 
-  }
+		uint gps_size = plvec_voxels.size();
+		if (gps_size < (uint)thd_num)
+		{
+			acc_t_evaluate(so3_ps, t_ps, 0, gps_size, Hess, JacT, residual);
+			Hess = hessians[0];
+			JacT = jacobians[0];
+			residual = resis[0];
+			return;
+		}
 
-  // Calculate residual
-  void evaluate_only_residual(vector<SO3> &so3_ps, vector<Eigen::Vector3d> &t_ps, double &residual)
-  {
-    residual = 0;
-    uint gps_size = plvec_voxels.size();
-    Eigen::Vector3d vec_tran;
+		vector<thread*> mthreads(thd_num);
 
-    for (uint a=0; a<gps_size; a++)
-    {
-      uint k = lam_types[a];
-      SIG_VEC_CLASS &sig_vec = sig_vecs[a];
-      vector<Eigen::Vector3d> &plvec_voxel = *plvec_voxels[a];
-      vector<int> &slwd_num = *slwd_nums[a];
-      uint backnum = plvec_voxel.size();
-      
-      Eigen::Vector3d centor(Eigen::Vector3d::Zero());
-      Eigen::Matrix3d covMat(Eigen::Matrix3d::Zero());
+		double part = 1.0*(gps_size)/thd_num;
+		for (int i=0; i<thd_num; i++)
+		{
+			int np = part*i;
+			int nn = part*(i+1);
+			
+			mthreads[i] = new thread(&LM_SLWD_VOXEL::acc_t_evaluate, this, ref(so3_ps), ref(t_ps), np, nn, ref(hessians[i]), ref(jacobians[i]), ref(resis[i]));
+		}
 
-      for (uint i=0; i<backnum; i++)
-      {
-        vec_tran = so3_ps[slwd_num[i]].matrix()*plvec_voxel[i] + t_ps[slwd_num[i]];
-        centor += vec_tran;
-        covMat += vec_tran * vec_tran.transpose();
-      }
+		for (int i=0; i<thd_num; i++)
+		{
+			mthreads[i]->join();
+			Hess += hessians[i];
+			JacT += jacobians[i];
+			residual += resis[i];
+			delete mthreads[i];
+		}
+	}
 
-      double N_points = backnum + sig_vec.sigma_size;
-      centor += sig_vec.sigma_vi;
-      covMat += sig_vec.sigma_vTv;
+	// Calculate residual
+	void evaluate_only_residual(vector<SO3> &so3_ps, vector<Eigen::Vector3d> &t_ps,
+								double &residual)
+	{
+		residual = 0;
+		uint gps_size = plvec_voxels.size();
+		Eigen::Vector3d vec_tran;
 
-      covMat = covMat - centor*centor.transpose()/N_points;
-      covMat = covMat / N_points;
+		for (uint a=0; a<gps_size; a++)
+		{
+			uint k = lam_types[a];
+			SIG_VEC_CLASS &sig_vec = sig_vecs[a];
+			vector<Eigen::Vector3d> &plvec_voxel = *plvec_voxels[a];
+			vector<int> &slwd_num = *slwd_nums[a];
+			uint backnum = plvec_voxel.size();
 
-      Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> saes(covMat);
-      Eigen::Vector3d eigen_value = saes.eigenvalues();
-      
-      if (k == 1)
-      {
-        residual += corn_less*eigen_value[k];
-      }
-      else
-      {
-        residual += eigen_value[k];
-      }
+			Eigen::Vector3d centor(Eigen::Vector3d::Zero());
+			Eigen::Matrix3d covMat(Eigen::Matrix3d::Zero());
 
+			for (uint i=0; i<backnum; i++)
+			{
+				vec_tran = so3_ps[slwd_num[i]].matrix()*plvec_voxel[i] + t_ps[slwd_num[i]];
+				centor += vec_tran;
+				covMat += vec_tran * vec_tran.transpose();
+			}
 
-    }
-  }
+			double N_points = backnum + sig_vec.sigma_size;
+			centor += sig_vec.sigma_vi;
+			covMat += sig_vec.sigma_vTv;
 
-  // LM process
-  void damping_iter()
-  {
-    my_mutex.lock();
-    map_refine_flag = 1;
-    my_mutex.unlock();
+			covMat = covMat - centor*centor.transpose()/N_points;
+			covMat = covMat / N_points;
 
-    if (plvec_voxels.size()!=slwd_nums.size() || plvec_voxels.size()!=lam_types.size() || plvec_voxels.size()!=sig_vecs.size())
-    {
-      printf("size is not equal\n");
-      exit(0);
-    }
+			Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> saes(covMat);
+			Eigen::Vector3d eigen_value = saes.eigenvalues();
+			
+			if (k == 1)
+				residual += corn_less*eigen_value[k];
+			else
+				residual += eigen_value[k];
+		}
+	}
 
-    double u = 0.01, v = 2;
-    Eigen::MatrixXd D(jac_leng, jac_leng), Hess(jac_leng, jac_leng);
-    Eigen::VectorXd JacT(jac_leng), dxi(jac_leng);
+	// LM process
+	void damping_iter()
+	{
+		my_mutex.lock();
+		map_refine_flag = 1;
+		my_mutex.unlock();
 
-    Eigen::MatrixXd Hess2(jac_leng, jac_leng);
-    Eigen::VectorXd JacT2(jac_leng);
+		if (plvec_voxels.size() != slwd_nums.size() ||
+			plvec_voxels.size() != lam_types.size() ||
+			plvec_voxels.size() != sig_vecs.size())
+		{
+			printf("size is not equal\n");
+			exit(0);
+		}
 
-    D.setIdentity();
-    double residual1, residual2, q;
-    bool is_calc_hess = true;
+		double u = 0.01, v = 2;
+		Eigen::MatrixXd D(jac_leng, jac_leng), Hess(jac_leng, jac_leng);
+		Eigen::VectorXd JacT(jac_leng), dxi(jac_leng);
 
-    cv::Mat matA(jac_leng, jac_leng, CV_64F, cv::Scalar::all(0));
-    cv::Mat matB(jac_leng, 1, CV_64F, cv::Scalar::all(0));
-    cv::Mat matX(jac_leng, 1, CV_64F, cv::Scalar::all(0));
+		Eigen::MatrixXd Hess2(jac_leng, jac_leng);
+		Eigen::VectorXd JacT2(jac_leng);
 
-    for (int i=0; i<iter_max; i++)
-    {
-      if (is_calc_hess)
-      {
-        // calculate Hessian, Jacobian, residual
-        divide_thread(so3_poses, t_poses, Hess, JacT, residual1);
-      }
+		D.setIdentity();
+		double residual1, residual2, q;
+		bool is_calc_hess = true;
 
-      D = Hess.diagonal().asDiagonal();
-      Hess2 = Hess + u*D;
-      
-      // The eigen solver is slower than opencv solver
+		cv::Mat matA(jac_leng, jac_leng, CV_64F, cv::Scalar::all(0));
+		cv::Mat matB(jac_leng, 1, CV_64F, cv::Scalar::all(0));
+		cv::Mat matX(jac_leng, 1, CV_64F, cv::Scalar::all(0));
 
-      // dxi = (Hess2).bdcSvd(Eigen::ComputeFullU|Eigen::ComputeFullV).solve(-JacT);
-      for (int j=0; j<jac_leng; j++)
-      {
-        matB.at<double>(j, 0) = -JacT(j, 0);
-        for (int f=0; f<jac_leng; f++)
-        {
-          matA.at<double>(j, f) = Hess2(j, f);
-        }
-      }
-      cv::solve(matA, matB, matX, cv::DECOMP_QR);
-      for (int j=0; j<jac_leng; j++)
-      {
-        dxi(j, 0) = matX.at<double>(j, 0);
-      }
-  
+		for (int i = 0; i < iter_max; i++)
+		{
+			if (is_calc_hess)
+			{
+				// calculate Hessian, Jacobian, residual
+				divide_thread(so3_poses, t_poses, Hess, JacT, residual1);
+			}
 
-      for (int j=0; j<slwd_size; j++)
-      {
-        // left multiplication
-        so3_poses_temp[j] = SO3::exp(dxi.block<3, 1>(6*(j), 0)) * so3_poses[j];
-        t_poses_temp[j] = t_poses[j] + dxi.block<3, 1>(6*(j)+3, 0);
-      }
+			D = Hess.diagonal().asDiagonal();
+			Hess2 = Hess + u*D;
 
-      // LM
-      double q1 = 0.5*(dxi.transpose() * (u*D*dxi-JacT))[0];
-      // double q1 = 0.5*dxi.dot(u*D*dxi-JacT);
-      evaluate_only_residual(so3_poses_temp, t_poses_temp, residual2);
+			// The eigen solver is slower than opencv solver
 
-      q = (residual1-residual2);
-      // printf("residual%d: %lf u: %lf v: %lf q: %lf %lf %lf\n", i, residual1, u, v, q/q1, q1, q);
+			// dxi = (Hess2).bdcSvd(Eigen::ComputeFullU|Eigen::ComputeFullV).solve(-JacT);
+			for (int j = 0; j < jac_leng; j++)
+			{
+				matB.at<double>(j, 0) = -JacT(j, 0);
+				for (int f = 0; f < jac_leng; f++)
+					matA.at<double>(j, f) = Hess2(j, f);
+			}
+			cv::solve(matA, matB, matX, cv::DECOMP_QR);
+			for (int j = 0; j < jac_leng; j++)
+				dxi(j, 0) = matX.at<double>(j, 0);
 
-      if (q > 0)
-      {
-        so3_poses = so3_poses_temp;
-        t_poses = t_poses_temp;
-        q = q / q1;
-        v = 2;
-        q = 1 - pow(2*q-1, 3);
-        u *= (q<one_three ? one_three:q);
-        is_calc_hess = true;
-      }
-      else
-      {
-        u = u * v;
-        v = 2 * v;
-        is_calc_hess = false;
-      }
-      
-      if (fabs(residual1-residual2)<1e-9)
-      {  
-        break;
-      }
-    }
-    
-    my_mutex.lock();
-    map_refine_flag = 2;
-    my_mutex.unlock();
-  }
+			for (int j = 0; j < slwd_size; j++)
+			{
+				// left multiplication
+				so3_poses_temp[j] = SO3::exp(dxi.block<3, 1>(6*(j), 0)) * so3_poses[j];
+				t_poses_temp[j] = t_poses[j] + dxi.block<3, 1>(6*(j)+3, 0);
+			}
+
+			// LM
+			double q1 = 0.5 * (dxi.transpose() * (u*D*dxi-JacT))[0];
+			// double q1 = 0.5*dxi.dot(u*D*dxi-JacT);
+			evaluate_only_residual(so3_poses_temp, t_poses_temp, residual2);
+
+			q = (residual1 - residual2);
+			// printf("residual%d: %lf u: %lf v: %lf q: %lf %lf %lf\n", i, residual1, u, v, q/q1, q1, q);
+
+			if (q > 0)
+			{
+				so3_poses = so3_poses_temp;
+				t_poses = t_poses_temp;
+				q = q / q1;
+				v = 2;
+				q = 1 - pow(2*q-1, 3);
+				u *= (q<one_three ? one_three:q);
+				is_calc_hess = true;
+			}
+			else
+			{
+				u = u * v;
+				v = 2 * v;
+				is_calc_hess = false;
+			}
+
+			if (fabs(residual1-residual2)<1e-9)
+				break;
+		}
+
+		my_mutex.lock();
+		map_refine_flag = 2;
+		my_mutex.unlock();
+	}
 
 	int read_refine_state()
 	{
@@ -689,23 +672,21 @@ public:
 		my_mutex.unlock();
 	}
 
-  void free_voxel()
-  {
-    uint pt_size = plvec_voxels.size();
-    for (uint i=0; i<pt_size; i++)
-    {
-      delete (plvec_voxels[i]);
-      delete (slwd_nums[i]);
-    }
+	void free_voxel()
+	{
+		uint pt_size = plvec_voxels.size();
+		for (uint i=0; i<pt_size; i++)
+		{
+			delete (plvec_voxels[i]);
+			delete (slwd_nums[i]);
+		}
 
-    plvec_voxels.clear();
-    slwd_nums.clear();
-    sig_vecs.clear();
-    lam_types.clear();
-  } 
-
+		plvec_voxels.clear();
+		slwd_nums.clear();
+		sig_vecs.clear();
+		lam_types.clear();
+	}
 };
-
 
 class OCTO_TREE
 {
@@ -719,7 +700,7 @@ public:
 	int ftype; // 0 is surface, 1 is corner
 	int points_size, sw_points_size;
 	double feat_eigen_ratio, feat_eigen_ratio_test;
-	PointType ap_center_direct;
+	PointType aptenter_direct;
 	double voxel_center[3]; // x, y, z
 	double quater_length;
 	OCTO_TREE* leaves[8];
@@ -768,25 +749,25 @@ public:
 		feat_eigen_ratio = saes.eigenvalues()[2] / saes.eigenvalues()[ftype];
 		Eigen::Vector3d direct_vec = saes.eigenvectors().col(2 * ftype);
 
-		ap_center_direct.x = center.x();
-		ap_center_direct.y = center.y();
-		ap_center_direct.z = center.z();
-		ap_center_direct.normal_x = direct_vec.x();
-		ap_center_direct.normal_y = direct_vec.y();
-		ap_center_direct.normal_z = direct_vec.z();
+		aptenter_direct.x = center.x();
+		aptenter_direct.y = center.y();
+		aptenter_direct.z = center.z();
+		aptenter_direct.normal_x = direct_vec.x();
+		aptenter_direct.normal_y = direct_vec.y();
+		aptenter_direct.normal_z = direct_vec.z();
 	}
 
 	// Cut root voxel into small pieces
 	// frame_head: Position of newest scan in sliding window
 	void recut(int layer, uint frame_head, pcl::PointCloud<PointType>& pl_feat_map)
 	{
-		cout<<"[recut] layer "<<layer<<endl;
-		cout<<"[recut] frame_head "<<frame_head<<endl;
-		cout<<"[recut] octo_state "<<octo_state<<endl;
+		// cout<<"[recut] layer "<<layer<<endl;
+		// cout<<"[recut] frame_head "<<frame_head<<endl;
+		// cout<<"[recut] octo_state "<<octo_state<<endl;
 		if (octo_state == 0)
 		{
 			points_size = 0;
-			cout<<"[recut] voxel_windowsize "<<voxel_windowsize<<endl;
+			// cout<<"[recut] voxel_windowsize "<<voxel_windowsize<<endl;
 			for (int i = 0; i < OCTO_TREE::voxel_windowsize; i++)
 				points_size += plvec_orig[i]->size();
 			
@@ -807,7 +788,7 @@ public:
 
 			if (feat_eigen_ratio >= feat_eigen_limit[ftype])
 			{
-				pl_feat_map.push_back(ap_center_direct);
+				pl_feat_map.push_back(aptenter_direct);
 				return;
 			}
 
@@ -949,7 +930,7 @@ public:
         }
         if (feat_eigen_ratio >= feat_eigen_limit[ftype])
         {
-          pl_feat_map.push_back(ap_center_direct);
+          pl_feat_map.push_back(aptenter_direct);
         }
       }
     }

@@ -22,23 +22,16 @@
 	<node pkg="balm" type="livox_feature" name="livox_feature" output="screen"> 
 	</node>
 
-	<!-- <node pkg="livox_mapping" type="loam_scanRegistration" name="scanRegistration" output="screen">
-  <remap from="/livox/lidar" to="/livox/lidar_1LVDG1S006J5GZ2" />
-  </node> -->
-
 	<param name="root_surf_voxel_size" type="double" value="1"/>
 	<param name="root_corn_voxel_size" type="double" value="1"/>
 	<param name="accumulate_window" type="int" value="5"/>
 	<param name="surf_filter_length" type="double" value="0.2"/>
-  <param name="corn_filter_length" type="double" value="0.2"/>
+    <param name="corn_filter_length" type="double" value="0.2"/>
 	<param name="pub_skip" type="int" value="1"/>
-  <node pkg="balm" type="balm_front_back" name="balm_front_back" output="screen">
+    <node pkg="balm" type="balm_front_back" name="balm_front_back" output="screen">
 	</node>
 
-	<!-- <param name="map_file_path" type="string" value=" " />
-	<param name="filter_parameter_corner" type="double" value="0.2" />
-	<param name="filter_parameter_surf" type="double" value="0.2" />
-	<node pkg="unity_sw_mapping" type="unity_mapping" name="unity_mapping" output="screen"/> -->
+	<node pkg="rosbag" type="play" name="player" output="screen" args="/home/sam/Downloads/hall_example.bag"/>
 
 	<arg name="rviz" default="true" />
 	<group if="$(arg rviz)">
