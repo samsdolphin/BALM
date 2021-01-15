@@ -111,10 +111,10 @@ int main(int argc, char **argv)
 	double corn_filter_length = 0.2; // 0.2
 	int window_size = 20; // sliding window size 20
 	int margi_size = 5; // margilization size 5
-	int filter_num = 1; // for map-refine LM optimizer
-	int thread_num = 4; // for map-refine LM optimizer
+	int filter_num = 1; // for map-refine LM optimizer 1
+	int thread_num = 4; // for map-refine LM optimizer 4
 	int scan2map_on = 10; // 10
-	int pub_skip = 1;
+	int pub_skip = 1; // 1
 
 	nh.param<int>("accumulate_window", accumulate_window, 3);
 	nh.param<double>("surf_filter_length", surf_filter_length, 0.4);
@@ -130,7 +130,7 @@ int main(int argc, char **argv)
 	printf("%lf %lf\n", voxel_size[0], voxel_size[1]);
 
 	Eigen::Quaterniond q_cur(1, 0, 0, 0);
-	Eigen::Vector3d t_curr(0, 0, 0);
+	Eigen::Vector3d t_cur(0, 0, 0);
 
 	pcl::PointCloud<PointType>::Ptr pc_corn(new pcl::PointCloud<PointType>);
 	pcl::PointCloud<PointType>::Ptr pc_surf(new pcl::PointCloud<PointType>);
@@ -164,7 +164,8 @@ int main(int argc, char **argv)
 	Eigen::Vector3d pt_ori, aft_tran, kervec, orient, v_ac;
 	uint pt_size;
 	PointType pt;
-	vector<int> pointSearchInd; vector<float> pointSearchSqDis;
+	vector<int> pointSearchInd; 
+	vector<float> pointSearchSqDis;
 	double range;
 	Eigen::Matrix4d trans(Eigen::Matrix4d::Identity());
 	ros::Time cur_t;
@@ -191,7 +192,6 @@ int main(int argc, char **argv)
 				trans.block<3, 1>(0, 3) = opt_lsv.t_poses[i];
 				pcl::PointCloud<PointType> pcloud;
 				pcl::transformPointCloud(*pc_full_buff[window_base + i], pcloud, trans);
-				
 				pc_send += pcloud;
 			}
 			pub_func(pc_send, pub_full, cur_t);
@@ -201,8 +201,8 @@ int main(int argc, char **argv)
 
 			for (int i = 0; i < window_size; i++)
 			{
-				q_buf[window_base+i] = opt_lsv.so3_poses[i].unit_quaternion();
-				t_buf[window_base+i] = opt_lsv.t_poses[i];
+				q_buf[window_base + i] = opt_lsv.so3_poses[i].unit_quaternion();
+				t_buf[window_base + i] = opt_lsv.t_poses[i];
 			}
 
 			// Publish poses
@@ -303,8 +303,7 @@ int main(int argc, char **argv)
 		OCTO_TREE::voxel_windowsize = scan_count - window_base;
 		// Down sampling like PCL voxelgrid filter
 		down_sampling_voxel(*pc_corn, corn_filter_length);
-    
-		double time_scan2map = ros::Time::now().toSec();
+
 		// Scan2map module
 		if (scan_count > accumulate_window)
 		{
@@ -330,9 +329,9 @@ int main(int argc, char **argv)
 				// LM optimizer for scan2map
 				VOXEL_DISTANCE sld;
 				sld.so3_pose.setQuaternion(q_cur);
-				sld.t_pose = t_curr;
+				sld.t_pose = t_cur;
 
-				pt_size = pc_surf->size(); 
+				pt_size = pc_surf->size();
 				if (scan_count <= scan2map_on)
 				{
 					// The method is similar with loam mapping.
@@ -340,7 +339,7 @@ int main(int argc, char **argv)
 					{
 						int ns = 5;
 						pt_ori << (*pc_surf)[i].x, (*pc_surf)[i].y, (*pc_surf)[i].z;
-						aft_tran = q_cur * pt_ori + t_curr;
+						aft_tran = q_cur * pt_ori + t_cur;
 						pt.x = aft_tran[0];
 						pt.y = aft_tran[1];
 						pt.z = aft_tran[2];
@@ -386,7 +385,7 @@ int main(int argc, char **argv)
 					{
 						int ns = 5;
 						pt_ori << (*pc_corn)[i].x, (*pc_corn)[i].y, (*pc_corn)[i].z;
-						aft_tran = q_cur * pt_ori + t_curr;
+						aft_tran = q_cur * pt_ori + t_cur;
 
 						pt.x = aft_tran[0];
 						pt.y = aft_tran[1];
@@ -431,7 +430,7 @@ int main(int argc, char **argv)
 					{
 						int ns = 5;
 						pt_ori << (*pc_surf)[i].x, (*pc_surf)[i].y, (*pc_surf)[i].z;
-						aft_tran = q_cur * pt_ori + t_curr;
+						aft_tran = q_cur * pt_ori + t_cur;
 						pt.x = aft_tran[0];
 						pt.y = aft_tran[1];
 						pt.z = aft_tran[2];
@@ -458,7 +457,7 @@ int main(int argc, char **argv)
 							}
 						}
 						// Push points into optimizer
-						sld.push_surf(pt_ori, kervec, orient, (1-0.75*range));
+						sld.push_surf(pt_ori, kervec, orient, (1 - 0.75 * range));
 					}
 
 					// Corn features
@@ -467,7 +466,7 @@ int main(int argc, char **argv)
 					{
 						int ns = 3;
 						pt_ori << (*pc_corn)[i].x, (*pc_corn)[i].y, (*pc_corn)[i].z;
-						aft_tran = q_cur * pt_ori + t_curr;
+						aft_tran = q_cur * pt_ori + t_cur;
 						pt.x = aft_tran[0];
 						pt.y = aft_tran[1];
 						pt.z = aft_tran[2];
@@ -501,16 +500,14 @@ int main(int argc, char **argv)
 
 				sld.damping_iter();
 				q_cur = sld.so3_pose.unit_quaternion();
-				t_curr = sld.t_pose;
+				t_cur = sld.t_pose;
 			}
 		}
-
-		time_scan2map = ros::Time::now().toSec() - time_scan2map;
 
 		if (scan_count <= scan2map_on)
 		{
 			trans.block<3, 3>(0, 0) = q_cur.matrix();
-			trans.block<3, 1>(0, 3) = t_curr;
+			trans.block<3, 1>(0, 3) = t_cur;
 
 			pcl::transformPointCloud(*pc_surf, pc_send, trans);
 			pl_surf_fil_map += pc_send;
@@ -527,9 +524,9 @@ int main(int argc, char **argv)
 		apose.orientation.x = q_cur.x();
 		apose.orientation.y = q_cur.y();
 		apose.orientation.z = q_cur.z();
-		apose.position.x = t_curr.x();
-		apose.position.y = t_curr.y();
-		apose.position.z = t_curr.z();
+		apose.position.x = t_cur.x();
+		apose.position.y = t_cur.y();
+		apose.position.z = t_cur.z();
 		parray.poses.push_back(apose);
 		pub_pose.publish(parray);
 
@@ -541,37 +538,37 @@ int main(int argc, char **argv)
 		laser_odom.pose.pose.orientation.y = q_cur.y();
 		laser_odom.pose.pose.orientation.z = q_cur.z();
 		laser_odom.pose.pose.orientation.w = q_cur.w();
-		laser_odom.pose.pose.position.x = t_curr.x();
-		laser_odom.pose.pose.position.y = t_curr.y();
-		laser_odom.pose.pose.position.z = t_curr.z();
+		laser_odom.pose.pose.position.x = t_cur.x();
+		laser_odom.pose.pose.position.y = t_cur.y();
+		laser_odom.pose.pose.position.z = t_cur.z();
 		pub_odom.publish(laser_odom);
 
 		static tf::TransformBroadcaster br;
 		tf::Transform transform;
 		tf::Quaternion q;
-		transform.setOrigin(tf::Vector3(t_curr.x(), t_curr.y(), t_curr.z()));
+		transform.setOrigin(tf::Vector3(t_cur.x(), t_cur.y(), t_cur.z()));
 		q.setW(q_cur.w());
 		q.setX(q_cur.x());
 		q.setY(q_cur.y());
 		q.setZ(q_cur.z());
 		transform.setRotation(q);
-		br.sendTransform(tf::StampedTransform(transform, laser_odom.header.stamp, "/camera_init",
+		br.sendTransform(tf::StampedTransform(transform, laser_odom.header.stamp, "camera_init",
 						 "/aft_mapped"));
 		
 		trans.block<3, 3>(0, 0) = q_cur.matrix();
-		trans.block<3, 1>(0, 3) = t_curr;
+		trans.block<3, 1>(0, 3) = t_cur;
 		pcl::transformPointCloud(*pc_full, pc_send, trans);
 		pub_func(pc_send, pub_test, cur_t);
     
 		// Get the variation of pose
 		if (scan_count > 1)
 		{
-			delta_t = q_buf[scan_count-2].matrix().transpose() * (t_curr - t_buf[scan_count-2]);
+			delta_t = q_buf[scan_count-2].matrix().transpose() * (t_cur - t_buf[scan_count-2]);
 			delta_q = q_buf[scan_count-2].matrix().transpose() * q_cur.matrix();
 		}
 
 		q_buf.push_back(q_cur);
-		t_buf.push_back(t_curr);
+		t_buf.push_back(t_cur);
 		delta_q_buf.push_back(delta_q);
 		delta_t_buf.push_back(delta_t);
 		
@@ -584,9 +581,9 @@ int main(int argc, char **argv)
 		}
 
 		// Put current feature points into root voxel node
-		cut_voxel(surf_map, pc_surf, q_cur.matrix(), t_curr, 0, scan_count-1 - window_base,
+		cut_voxel(surf_map, pc_surf, q_cur.matrix(), t_cur, 0, scan_count-1 - window_base,
 				  window_size + 10);
-		cut_voxel(corn_map, pc_corn, q_cur.matrix(), t_curr, 1, scan_count-1 - window_base,
+		cut_voxel(corn_map, pc_corn, q_cur.matrix(), t_cur, 1, scan_count-1 - window_base,
 				  window_size + 10);
 		
 		// The center point of surf points and corn points
@@ -621,7 +618,7 @@ int main(int argc, char **argv)
 			}
 			pl_corn_center_map += iter->second->root_centers;
 		}
-    
+
 		// Begin map refine module
 		if (scan_count >= window_base + window_size && opt_lsv.read_refine_state() == 0)
 		{
@@ -658,7 +655,7 @@ int main(int argc, char **argv)
 		}
 
 		// pose prediction
-		t_curr = t_curr + q_cur * delta_t;
+		t_cur = t_cur + q_cur * delta_t;
 		q_cur = q_cur * delta_q;    
 	}
 }
